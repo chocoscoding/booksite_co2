@@ -12,9 +12,11 @@ import {
   ShoppingCart,
   Download,
   CheckCircle,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBookSession, getAuthHeaders as getSessionAuthHeaders } from "@/lib/bookSession";
+import { BookPdfViewer, BookPdfDownloadButton } from "@/components/BookPdfViewer";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -50,6 +52,7 @@ const BookPreview = () => {
   const [bookStatus, setBookStatus] = useState<BookStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [showPdfView, setShowPdfView] = useState(false);
 
   // Support both session storage and URL param for bookId (for email links)
   const bookId = session?.bookId || searchParams.get("bookId");
@@ -480,6 +483,31 @@ const BookPreview = () => {
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
+
+        {/* PDF View Toggle */}
+        {previewData && (
+          <div className="w-full max-w-2xl mb-8">
+            <Button
+              onClick={() => setShowPdfView(!showPdfView)}
+              variant="ghost"
+              className="text-primary hover:text-coral-dark mb-4"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              {showPdfView ? "Nascondi PDF" : "Visualizza come PDF"}
+            </Button>
+
+            {showPdfView && (
+              <BookPdfViewer
+                title={previewData.title || "Il Tuo Libro"}
+                subtitle={previewData.subtitle}
+                previewPages={previewData.previewPages || []}
+                coverImageUrl={previewData.previewCoverUrl || bookStatus?.coverImageUrl}
+                isPreview={!isPaid}
+                className="mt-4"
+              />
+            )}
+          </div>
+        )}
 
         {/* CTA based on payment status */}
         {isPaid && isCompleted ? (

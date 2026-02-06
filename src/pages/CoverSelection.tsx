@@ -6,6 +6,10 @@ import { ArrowLeft, Camera, Palette, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBookSession, setCoverType } from "@/lib/bookSession";
 
+// Cover preview images
+import photoCoverImage from "@/assets/hero-person-2.jpg";
+import illustratedCoverImage from "@/assets/aigencover.png";
+
 type CoverType = "photo" | "illustrated";
 
 const CoverSelection = () => {
@@ -41,7 +45,7 @@ const CoverSelection = () => {
         "Trasforma la persona nella foto nella protagonista di una splendida copertina generata dall'IA.",
       icon: Camera,
       popular: true,
-      image: "/covers/photo-cover-example.png",
+      image: photoCoverImage,
     },
     {
       id: "illustrated" as CoverType,
@@ -50,7 +54,7 @@ const CoverSelection = () => {
         "Una bellissima copertina artistica IA basata sul tema del libro.",
       icon: Palette,
       popular: false,
-      image: "/covers/illustrated-cover-example.png",
+      image: illustratedCoverImage,
     },
   ];
 

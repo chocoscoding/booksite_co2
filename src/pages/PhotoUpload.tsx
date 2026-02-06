@@ -82,7 +82,7 @@ const PhotoUpload = () => {
         formData.append("type", "cover-photo");
         if (bookId) formData.append("bookId", bookId);
 
-        const uploadResponse = await fetch(`${API_URL}/api/upload`, {
+        const uploadResponse = await fetch(`${API_URL}/api/upload/image`, {
           method: "POST",
           headers: getAuthHeaders(),
           body: formData,
