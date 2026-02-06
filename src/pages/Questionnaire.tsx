@@ -312,27 +312,37 @@ const Questionnaire = () => {
             <Button
               onClick={handleSkip}
               variant="outline"
-              className="px-6 py-6 rounded-lg border-gray-300 text-gray-700 hover:bg-primary hover:text-white hover:border-primary"
+              className="px-6 py-6 rounded-lg border-gray-300 text-gray-700 hover:bg-gray-100"
             >
               Salta
             </Button>
           </div>
+
+          {/* Skip helper text */}
+          <p className="text-center text-sm text-gray-400 mt-3">
+            Non hai tempo? Salta pure — la nostra IA completerà i dettagli mancanti in modo coerente.
+          </p>
 
           {/* Remaining questions */}
           <p className="text-center text-gray-500 mt-4">
             {remainingQuestions} {remainingQuestions === 1 ? "domanda rimasta" : "domande rimaste"}
           </p>
 
-          {/* Continue to genre button */}
-          <div className="border-t border-gray-200 mt-6 pt-6">
-            <Button
-              onClick={handleContinueToGenre}
-              className="w-full py-6 bg-primary hover:bg-coral-dark text-white rounded-lg flex items-center justify-center gap-2"
-            >
-              Continua alla Selezione del Genere
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-          </div>
+          {/* Quick finish option */}
+          {answeredCount >= 1 && (
+            <div className="border-t border-gray-200 mt-6 pt-6">
+              <p className="text-center text-sm text-gray-500 mb-3">
+                Hai fretta? Con {answeredCount} {answeredCount === 1 ? "risposta" : "risposte"} possiamo già creare un libro personalizzato!
+              </p>
+              <Button
+                onClick={handleContinueToGenre}
+                className="w-full py-6 bg-primary hover:bg-coral-dark text-white rounded-lg flex items-center justify-center gap-2"
+              >
+                Continua alla Selezione del Genere
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

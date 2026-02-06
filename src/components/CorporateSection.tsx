@@ -21,7 +21,7 @@ const CorporateSection = () => {
           <Button 
             size="lg" 
             variant="outline" 
-            className="border-white text-white hover:bg-white hover:text-navy"
+            className="border-white text-navy"
           >
             Scopri i Regali Aziendali
           </Button>

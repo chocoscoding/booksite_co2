@@ -20,7 +20,7 @@ const GiftOccasion = () => {
   return (
     <div className="min-h-screen bg-[#f8f7f4] flex flex-col">
       {/* Back button */}
-      <div className="p-4">
+      <div className="p-4 relative z-10">
         <button
           onClick={handleBack}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -58,7 +58,7 @@ const GiftOccasion = () => {
           <Button
             onClick={handleForMe}
             variant="outline"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-6 text-base rounded-full"
+            className="border-gray-300 text-gray-700 hover:text-gray-700 hover:bg-gray-50 px-8 py-6 text-base rounded-full"
           >
             No, È per Me
           </Button>

@@ -165,7 +165,7 @@ const EmailCapture = () => {
   return (
     <div className="min-h-screen bg-[#f8f7f4] flex flex-col">
       {/* Back button */}
-      <div className="p-4">
+       <div className="p-4 relative z-10">
         <button
           onClick={handleBack}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
