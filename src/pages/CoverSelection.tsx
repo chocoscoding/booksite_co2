@@ -1,34 +1,35 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Camera, Palette, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBookSession, setCoverType } from "@/lib/bookSession";
 
 type CoverType = "photo" | "illustrated";
 
 const CoverSelection = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const session = getBookSession();
   const [selectedCover, setSelectedCover] = useState<CoverType>("photo");
 
-  const bookId = searchParams.get("bookId");
-  const name = searchParams.get("name") || "";
+  const bookId = session?.bookId;
+  const name = session?.character?.name || "";
 
   const handleBack = () => {
     navigate(-1);
   };
 
   const handleContinue = () => {
-    const params = new URLSearchParams(searchParams);
-    params.set("coverType", selectedCover);
+    // Save cover type to session
+    setCoverType(selectedCover);
 
     if (selectedCover === "photo") {
       // Go to photo upload
-      navigate(`/photo-upload?${params.toString()}`);
+      navigate("/photo-upload");
     } else {
       // Go directly to book preview for illustrated cover
-      navigate(`/book-preview?${params.toString()}`);
+      navigate("/book-preview");
     }
   };
 

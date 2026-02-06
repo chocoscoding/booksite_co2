@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import AnnouncementBanner from "@/components/AnnouncementBanner";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
@@ -11,8 +12,14 @@ import UpcomingEvents from "@/components/UpcomingEvents";
 import CustomerReviews from "@/components/CustomerReviews";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
+import { clearBookSession } from "@/lib/bookSession";
 
 const Index = () => {
+  // Clear any incomplete book session when returning to home
+  useEffect(() => {
+    clearBookSession();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <AnnouncementBanner />

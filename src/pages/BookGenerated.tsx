@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BookOpen, CheckCircle, Loader2 } from "lucide-react";
+import { getBookSession } from "@/lib/bookSession";
 
 const BookGenerated = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const session = getBookSession();
   const [isLoading, setIsLoading] = useState(true);
-  const name = searchParams.get("name") || "il tuo personaggio";
+  const name = session?.character?.name || "il tuo personaggio";
 
   useEffect(() => {
     // Simulate book generation

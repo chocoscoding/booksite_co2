@@ -14,6 +14,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBookSession, getAuthHeaders as getSessionAuthHeaders } from "@/lib/bookSession";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -42,6 +43,7 @@ interface BookStatus {
 const BookPreview = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const session = getBookSession();
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0 = cover, 1-3 = pages
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -49,8 +51,9 @@ const BookPreview = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
-  const bookId = searchParams.get("bookId");
-  const name = searchParams.get("name") || "il tuo personaggio";
+  // Support both session storage and URL param for bookId (for email links)
+  const bookId = session?.bookId || searchParams.get("bookId");
+  const name = session?.character?.name || searchParams.get("name") || "il tuo personaggio";
   const emailToken = searchParams.get("token"); // JWT from email/magic link
 
   useEffect(() => {
@@ -64,15 +67,11 @@ const BookPreview = () => {
   }, [bookId]);
 
   const getAuthHeaders = (): Record<string, string> => {
-    // Prefer email-link token, then magic link token, then sessionStorage, then localStorage
-    const token =
-      emailToken ||
-      sessionStorage.getItem("magicLinkToken") ||
-      sessionStorage.getItem("bookAccessToken") ||
-      localStorage.getItem("authToken");
-
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
+    // Prefer email-link token, then session-based auth
+    if (emailToken) {
+      return { Authorization: `Bearer ${emailToken}` };
+    }
+    return getSessionAuthHeaders();
   };
 
   const loadBookAndPreview = async () => {
@@ -380,7 +379,7 @@ const BookPreview = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
         {/* Book preview */}
-        <div className="w-full max-w-xl mb-8">
+        <div className="w-full max-w-2xl mb-8">
           {isOnCover ? (
             /* Cover Page */
             <Card className="aspect-[3/4] relative overflow-hidden rounded-2xl shadow-xl">

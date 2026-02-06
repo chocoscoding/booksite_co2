@@ -1,29 +1,22 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Mail, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Generate a client-side tracking ID for this book creation session
-// This is only used locally and NOT sent to backend (backend uses MongoDB IDs)
-const getOrCreateSessionTrackingId = (): string => {
-  const key = "currentBookCreationId";
-  let trackingId = sessionStorage.getItem(key);
-  if (!trackingId) {
-    trackingId = crypto.randomUUID();
-    sessionStorage.setItem(key, trackingId);
-  }
-  return trackingId;
-};
+import { 
+  getBookSession, 
+  setEmail as saveEmail, 
+  setBookId, 
+  setAuthToken,
+  prepareBookCreationData 
+} from "@/lib/bookSession";
 
 const EmailCapture = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientTrackingId] = useState(() => getOrCreateSessionTrackingId());
 
   const handleBack = () => {
     navigate(-1);
@@ -39,48 +32,23 @@ const EmailCapture = () => {
     setIsLoading(true);
     setError(null);
 
-    // Store the client tracking ID for this email
-    sessionStorage.setItem(`bookCreation_${clientTrackingId}_email`, email);
+    // Save email to session
+    saveEmail(email);
 
     try {
-      // Get all the collected data from URL params
-      const name = searchParams.get("name") || "";
-      const characterType = searchParams.get("type") || "person";
-      const gender = searchParams.get("gender") || "";
-      const occasion = searchParams.get("occasion") || "";
-      const genre = searchParams.get("genre") || "";
-      const isGift = searchParams.get("is_gift") === "true";
+      // Get all data from session storage
+      const session = getBookSession();
+      if (!session) {
+        throw new Error("Sessione non trovata. Riprova dall'inizio.");
+      }
 
-      // Get questionnaire answers from params
-      const answers: Record<string, string> = {};
-      searchParams.forEach((value, key) => {
-        if (!["name", "type", "gender", "occasion", "genre", "is_gift"].includes(key)) {
-          answers[key] = value;
-        }
-      });
+      const bookData = prepareBookCreationData();
+      if (!bookData) {
+        throw new Error("Dati del libro non trovati");
+      }
 
-      // Build character info
-      const characters = [
-        {
-          name,
-          role: "protagonist" as const,
-          description: answers.personality || "",
-          personality: answers.quirks ? [answers.quirks] : [],
-        },
-      ];
-
-      // Build customization
-      const customization = {
-        genre,
-        occasion,
-        tone: genre === "comedy" ? "funny" : genre === "romance" ? "romantic" : "adventurous",
-        pageCount: 20,
-        includeIllustrations: true,
-        recipientName: name,
-        recipientRelationship: isGift ? "gift recipient" : "self",
-        dedicationMessage: answers.memorable_moment || "",
-        specialMessages: [answers.dreams, answers.hobbies].filter(Boolean),
-      };
+      const { characters, customization, isGift, genre, occasion } = bookData;
+      const name = session.character?.name || "";
 
       // Create book draft via API
       const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -103,6 +71,7 @@ const EmailCapture = () => {
         token = authData.data.token;
         userId = authData.data.user.id;
         localStorage.setItem("authToken", token);
+        setAuthToken(token);
       } else {
         // Try login if register fails (user might exist)
         const loginResponse = await fetch(`${apiUrl}/api/auth/login`, {
@@ -116,12 +85,13 @@ const EmailCapture = () => {
           token = loginData.data.token;
           userId = loginData.data.user.id;
           localStorage.setItem("authToken", token);
+          setAuthToken(token);
         } else {
           throw new Error("Impossibile autenticare l'utente");
         }
       }
 
-      // Create book draft (backend generates real MongoDB ID, ignoring any client ID)
+      // Create book draft (backend generates real MongoDB ID)
       const bookResponse = await fetch(`${apiUrl}/api/books`, {
         method: "POST",
         headers: {
@@ -141,19 +111,14 @@ const EmailCapture = () => {
         throw new Error("Errore nella creazione del libro");
       }
 
-      const bookData = await bookResponse.json();
-      const bookId = bookData.data.id; // This is the REAL MongoDB ID from backend
+      const bookDataResponse = await bookResponse.json();
+      const bookId = bookDataResponse.data.id; // This is the REAL MongoDB ID from backend
 
-      // Map our client tracking ID to the real book ID
-      sessionStorage.setItem(`bookCreation_${clientTrackingId}_bookId`, bookId);
-      // Clear the client tracking ID for next creation
-      sessionStorage.removeItem("currentBookCreationId");
+      // Save book ID to session
+      setBookId(bookId);
 
-      // Navigate to title selection with book ID
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("email", email);
-      newParams.set("bookId", bookId);
-      navigate(`/title-selection?${newParams.toString()}`);
+      // Navigate to title selection (no URL params needed)
+      navigate("/title-selection");
     } catch (err) {
       console.error("Error:", err);
       setError(err instanceof Error ? err.message : "Si è verificato un errore");

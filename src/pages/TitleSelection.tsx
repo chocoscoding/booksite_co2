@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Loader2, RefreshCw, Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBookSession, setTitle, getAuthHeaders } from "@/lib/bookSession";
 
 interface TitleVariant {
   title: string;
@@ -12,7 +13,7 @@ interface TitleVariant {
 
 const TitleSelection = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const session = getBookSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [titleVariants, setTitleVariants] = useState<TitleVariant[]>([]);
@@ -22,8 +23,8 @@ const TitleSelection = () => {
   const [customSubtitle, setCustomSubtitle] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const bookId = searchParams.get("bookId");
-  const name = searchParams.get("name") || "";
+  const bookId = session?.bookId;
+  const name = session?.character?.name || "";
 
   useEffect(() => {
     if (bookId) {
@@ -33,12 +34,6 @@ const TitleSelection = () => {
       setIsLoading(false);
     }
   }, [bookId]);
-
-  const getAuthHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  };
 
   const generateTitles = async () => {
     setIsLoading(true);
@@ -108,6 +103,9 @@ const TitleSelection = () => {
       return;
     }
 
+    // Save title to session
+    setTitle(finalTitle, finalSubtitle);
+
     // Update the book draft with the selected title
     try {
       const response = await fetch(
@@ -129,9 +127,8 @@ const TitleSelection = () => {
         throw new Error("Errore nel salvataggio del titolo");
       }
 
-      // Navigate to cover selection with the book ID
-      const newParams = new URLSearchParams(searchParams);
-      navigate(`/cover-selection?${newParams.toString()}`);
+      // Navigate to cover selection (no URL params needed)
+      navigate("/cover-selection");
     } catch (err) {
       console.error("Save title error:", err);
       setError(err instanceof Error ? err.message : "Errore nel salvataggio");

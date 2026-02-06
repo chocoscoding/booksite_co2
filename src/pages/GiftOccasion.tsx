@@ -1,20 +1,27 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Gift, ArrowLeft } from "lucide-react";
+import { initBookSession, clearBookSession } from "@/lib/bookSession";
 
 const GiftOccasion = () => {
   const navigate = useNavigate();
 
   const handleBack = () => {
+    // Clear any existing session when leaving
+    clearBookSession();
     navigate("/");
   };
 
   const handleGift = () => {
+    // Initialize a new book session for gift
+    initBookSession(true);
     navigate("/occasion-selection");
   };
 
   const handleForMe = () => {
-    navigate("/character-selection?is_gift=false");
+    // Initialize a new book session for self
+    initBookSession(false);
+    navigate("/character-selection");
   };
 
   return (

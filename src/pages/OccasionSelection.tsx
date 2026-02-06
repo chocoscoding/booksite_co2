@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { setOccasion as saveOccasion } from "@/lib/bookSession";
 
 interface Occasion {
   id: string;
@@ -29,7 +30,6 @@ const occasions: Occasion[] = [
 
 const OccasionSelection = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [selectedOccasion, setSelectedOccasion] = useState<string | null>(null);
 
   const handleBack = () => {
@@ -38,11 +38,9 @@ const OccasionSelection = () => {
 
   const handleSelectOccasion = (occasionId: string) => {
     setSelectedOccasion(occasionId);
-    // Navigate to character selection with the occasion
-    const params = new URLSearchParams(searchParams);
-    params.set("is_gift", "true");
-    params.set("occasion", occasionId);
-    navigate(`/character-selection?${params.toString()}`);
+    // Store occasion in session and navigate
+    saveOccasion(occasionId);
+    navigate("/character-selection");
   };
 
   return (

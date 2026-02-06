@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, AlertCircle, BookOpen, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { updateBookSession } from "@/lib/bookSession";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -64,6 +65,12 @@ const BookAccess = () => {
 
       // Store the book-access token so downstream pages can use it
       sessionStorage.setItem("bookAccessToken", jwt);
+      
+      // Also save bookId to session storage for consistent access
+      updateBookSession({ 
+        bookId: data.data.bookId,
+        bookAccessToken: jwt 
+      });
 
       // Redirect based on action
       redirectByAction(data.data, jwt);
@@ -74,6 +81,8 @@ const BookAccess = () => {
   };
 
   const redirectByAction = (p: TokenPayload, jwt: string) => {
+    // For email links, we still pass bookId and token in URL for backward compatibility
+    // but session storage is the primary source now
     const params = new URLSearchParams();
     params.set("bookId", p.bookId);
     params.set("token", jwt);

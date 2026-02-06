@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ArrowRight, Sparkles, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBookSession, setAnswers as saveAnswers } from "@/lib/bookSession";
 
 interface Question {
   id: string;
@@ -14,11 +15,10 @@ interface Question {
 
 const Questionnaire = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const name = searchParams.get("name") || "";
-  const characterType = searchParams.get("type") || "person";
-  const gender = searchParams.get("gender") || "";
-  const isGift = searchParams.get("is_gift") === "true";
+  const session = getBookSession();
+  const name = session?.character?.name || "";
+  const characterType = session?.character?.type || "person";
+  const isGift = session?.isGift ?? false;
 
   const personQuestions: Question[] = [
     {
@@ -142,12 +142,17 @@ const Questionnaire = () => {
       setCurrentAnswer(answers[questions[currentQuestionIndex - 1]?.id] || "");
     } else {
       // Go back to character selection
-      navigate(`/character-selection?is_gift=${isGift}`);
+      navigate("/character-selection");
     }
   };
 
   const handleContinueToGenre = () => {
     // Save current answer if exists
+    const finalAnswers = {
+      ...answers,
+      ...(currentAnswer.trim() ? { [currentQuestion.id]: currentAnswer.trim() } : {}),
+    };
+    
     if (currentAnswer.trim()) {
       setAnswers((prev) => ({
         ...prev,
@@ -155,19 +160,9 @@ const Questionnaire = () => {
       }));
     }
 
-    const queryParams = new URLSearchParams({
-      name,
-      type: characterType,
-      is_gift: String(isGift),
-      ...answers,
-      ...(currentAnswer.trim() ? { [currentQuestion.id]: currentAnswer.trim() } : {}),
-    });
-    
-    if (gender) {
-      queryParams.set("gender", gender);
-    }
-
-    navigate(`/genre-selection?${queryParams.toString()}`);
+    // Save all answers to session storage
+    saveAnswers(finalAnswers);
+    navigate("/genre-selection");
   };
 
   const handleReview = () => {

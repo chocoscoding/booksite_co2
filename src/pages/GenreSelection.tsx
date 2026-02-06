@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { setGenre as saveGenre } from "@/lib/bookSession";
 
 interface Genre {
   id: string;
@@ -54,7 +55,6 @@ const genres: Genre[] = [
 
 const GenreSelection = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   const handleBack = () => {
@@ -63,10 +63,9 @@ const GenreSelection = () => {
 
   const handleContinue = () => {
     if (selectedGenre) {
-      // Preserve all existing params and add genre
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set("genre", selectedGenre);
-      navigate(`/email-capture?${newParams.toString()}`);
+      // Save genre to session storage and navigate
+      saveGenre(selectedGenre);
+      navigate("/email-capture");
     }
   };
 

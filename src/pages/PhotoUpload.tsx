@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -10,30 +10,21 @@ import {
   Sparkles,
   Loader2,
 } from "lucide-react";
+import { getBookSession, setPhotoUrl, getAuthHeaders } from "@/lib/bookSession";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 const PhotoUpload = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const session = getBookSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [useSample, setUseSample] = useState(false);
 
-  const bookId = searchParams.get("bookId");
-  const name = searchParams.get("name") || "il protagonista";
-
-  const getAuthHeaders = (): Record<string, string> => {
-    const token =
-      sessionStorage.getItem("magicLinkToken") ||
-      sessionStorage.getItem("bookAccessToken") ||
-      localStorage.getItem("authToken");
-
-    if (!token) return {};
-    return { Authorization: `Bearer ${token}` };
-  };
+  const bookId = session?.bookId;
+  const name = session?.character?.name || "il protagonista";
 
   const handleBack = () => {
     navigate(-1);
@@ -108,6 +99,11 @@ const PhotoUpload = () => {
         photoUrl = "sample";
       }
 
+      // Save photo URL to session
+      if (photoUrl) {
+        setPhotoUrl(photoUrl);
+      }
+
       // Update book with cover photo
       if (bookId && photoUrl) {
         await fetch(`${API_URL}/api/books/${bookId}`, {
@@ -125,11 +121,8 @@ const PhotoUpload = () => {
         });
       }
 
-      // Navigate to book preview
-      const params = new URLSearchParams(searchParams);
-      params.set("coverType", "photo");
-      if (photoUrl) params.set("coverPhoto", encodeURIComponent(photoUrl));
-      navigate(`/book-preview?${params.toString()}`);
+      // Navigate to book preview (no URL params needed)
+      navigate("/book-preview");
     } catch (err) {
       console.error("Upload error:", err);
       alert(err instanceof Error ? err.message : "Errore nel caricamento");
@@ -162,7 +155,7 @@ const PhotoUpload = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center px-4 py-8">
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-2xl">
           {/* Title */}
           <div className="text-center mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">

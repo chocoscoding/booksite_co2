@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, User, Dog } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getBookSession, setCharacterData } from "@/lib/bookSession";
 
 type CharacterType = "person" | "pet" | null;
 type Gender = "female" | "male" | "non-binary" | "prefer-not-to-say" | null;
 
 const CharacterSelection = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const isGift = searchParams.get("is_gift") === "true";
+  const session = getBookSession();
+  const isGift = session?.isGift ?? false;
 
   const [characterType, setCharacterType] = useState<CharacterType>("person");
   const [name, setName] = useState("");
@@ -22,9 +23,20 @@ const CharacterSelection = () => {
     if (characterType === "person" && step === "type" && name.trim()) {
       setStep("gender");
     } else if (characterType === "person" && step === "gender" && gender) {
-      navigate(`/questionnaire?name=${encodeURIComponent(name)}&gender=${gender}&type=person&is_gift=${isGift}`);
+      // Store character data in session and navigate
+      setCharacterData({
+        name: name.trim(),
+        type: "person",
+        gender: gender,
+      });
+      navigate("/questionnaire");
     } else if (characterType === "pet" && name.trim()) {
-      navigate(`/questionnaire?name=${encodeURIComponent(name)}&type=pet&is_gift=${isGift}`);
+      // Store character data in session and navigate
+      setCharacterData({
+        name: name.trim(),
+        type: "pet",
+      });
+      navigate("/questionnaire");
     }
   };
 
@@ -67,7 +79,7 @@ const CharacterSelection = () => {
 
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 -mt-20">
-        <div className="w-full max-w-xl bg-white rounded-2xl p-8 shadow-sm">
+        <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-sm">
           {characterType === "person" && step === "gender" ? (
             <>
               {/* Gender selection step */}
