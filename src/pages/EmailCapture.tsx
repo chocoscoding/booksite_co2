@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Mail, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Generate a client-side tracking ID for this book creation session
+// This is only used locally and NOT sent to backend (backend uses MongoDB IDs)
+const getOrCreateSessionTrackingId = (): string => {
+  const key = "currentBookCreationId";
+  let trackingId = sessionStorage.getItem(key);
+  if (!trackingId) {
+    trackingId = crypto.randomUUID();
+    sessionStorage.setItem(key, trackingId);
+  }
+  return trackingId;
+};
 
 const EmailCapture = () => {
   const navigate = useNavigate();
@@ -11,6 +23,7 @@ const EmailCapture = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clientTrackingId] = useState(() => getOrCreateSessionTrackingId());
 
   const handleBack = () => {
     navigate(-1);
@@ -25,6 +38,9 @@ const EmailCapture = () => {
 
     setIsLoading(true);
     setError(null);
+
+    // Store the client tracking ID for this email
+    sessionStorage.setItem(`bookCreation_${clientTrackingId}_email`, email);
 
     try {
       // Get all the collected data from URL params
@@ -81,9 +97,11 @@ const EmailCapture = () => {
       });
 
       let token = "";
+      let userId = "";
       if (authResponse.ok) {
         const authData = await authResponse.json();
-        token = authData.data.accessToken;
+        token = authData.data.token;
+        userId = authData.data.user.id;
         localStorage.setItem("authToken", token);
       } else {
         // Try login if register fails (user might exist)
@@ -95,14 +113,15 @@ const EmailCapture = () => {
         
         if (loginResponse.ok) {
           const loginData = await loginResponse.json();
-          token = loginData.data.accessToken;
+          token = loginData.data.token;
+          userId = loginData.data.user.id;
           localStorage.setItem("authToken", token);
         } else {
           throw new Error("Impossibile autenticare l'utente");
         }
       }
 
-      // Create book draft
+      // Create book draft (backend generates real MongoDB ID, ignoring any client ID)
       const bookResponse = await fetch(`${apiUrl}/api/books`, {
         method: "POST",
         headers: {
@@ -123,13 +142,18 @@ const EmailCapture = () => {
       }
 
       const bookData = await bookResponse.json();
-      const bookId = bookData.data.id;
+      const bookId = bookData.data.id; // This is the REAL MongoDB ID from backend
 
-      // Navigate to preview with book ID
+      // Map our client tracking ID to the real book ID
+      sessionStorage.setItem(`bookCreation_${clientTrackingId}_bookId`, bookId);
+      // Clear the client tracking ID for next creation
+      sessionStorage.removeItem("currentBookCreationId");
+
+      // Navigate to title selection with book ID
       const newParams = new URLSearchParams(searchParams);
       newParams.set("email", email);
       newParams.set("bookId", bookId);
-      navigate(`/book-preview?${newParams.toString()}`);
+      navigate(`/title-selection?${newParams.toString()}`);
     } catch (err) {
       console.error("Error:", err);
       setError(err instanceof Error ? err.message : "Si è verificato un errore");

@@ -10,8 +10,12 @@ import CharacterSelection from "./pages/CharacterSelection";
 import Questionnaire from "./pages/Questionnaire";
 import GenreSelection from "./pages/GenreSelection";
 import EmailCapture from "./pages/EmailCapture";
+import TitleSelection from "./pages/TitleSelection";
+import CoverSelection from "./pages/CoverSelection";
 import BookPreview from "./pages/BookPreview";
 import BookGenerated from "./pages/BookGenerated";
+import BookAccess from "./pages/BookAccess";
+import MyBooks from "./pages/MyBooks";
 
 const queryClient = new QueryClient();
 
@@ -28,8 +32,12 @@ const App = () => (
           <Route path="/questionnaire" element={<Questionnaire />} />
           <Route path="/genre-selection" element={<GenreSelection />} />
           <Route path="/email-capture" element={<EmailCapture />} />
+          <Route path="/title-selection" element={<TitleSelection />} />
+          <Route path="/cover-selection" element={<CoverSelection />} />
           <Route path="/book-preview" element={<BookPreview />} />
           <Route path="/book-generated" element={<BookGenerated />} />
+          <Route path="/book-access" element={<BookAccess />} />
+          <Route path="/i-miei-libri" element={<MyBooks />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

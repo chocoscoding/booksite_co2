@@ -10,8 +10,12 @@ import {
   Sparkles,
   RefreshCw,
   ShoppingCart,
+  Download,
+  CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 interface PreviewPage {
   chapterNumber: number;
@@ -27,16 +31,27 @@ interface PreviewData {
   previewGenerated: boolean;
 }
 
+interface BookStatus {
+  id: string;
+  status: string;
+  isPaid: boolean;
+  pdfUrl?: string;
+  coverImageUrl?: string;
+}
+
 const BookPreview = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0 = cover, 1-3 = pages
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+  const [bookStatus, setBookStatus] = useState<BookStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const bookId = searchParams.get("bookId");
   const name = searchParams.get("name") || "il tuo personaggio";
+  const emailToken = searchParams.get("token"); // JWT from email/magic link
 
   useEffect(() => {
     if (!bookId) {
@@ -45,25 +60,106 @@ const BookPreview = () => {
       return;
     }
 
-    generatePreview();
+    loadBookAndPreview();
   }, [bookId]);
 
-  const generatePreview = async () => {
+  const getAuthHeaders = (): Record<string, string> => {
+    // Prefer email-link token, then magic link token, then sessionStorage, then localStorage
+    const token =
+      emailToken ||
+      sessionStorage.getItem("magicLinkToken") ||
+      sessionStorage.getItem("bookAccessToken") ||
+      localStorage.getItem("authToken");
+
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const loadBookAndPreview = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/books/${bookId}/preview`,
+      // First, try to get existing preview
+      const previewResponse = await fetch(
+        `${API_URL}/api/books/${bookId}/preview`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
-            ...(token && { Authorization: `Bearer ${token}` }),
+            ...getAuthHeaders(),
           },
         }
       );
+
+      if (previewResponse.ok) {
+        const previewResult = await previewResponse.json();
+        setPreviewData(previewResult.data);
+      } else {
+        // Generate preview if not exists
+        await generatePreview();
+      }
+
+      // Get book status to check if paid
+      await fetchBookStatus();
+    } catch (err) {
+      console.error("Load error:", err);
+      // Try to generate preview anyway
+      await generatePreview();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchBookStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/books/${bookId}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const book = data.data;
+
+        // Check if there's a paid order for this book
+        const ordersResponse = await fetch(
+          `${API_URL}/api/orders?bookId=${bookId}`,
+          { headers: getAuthHeaders() }
+        );
+
+        let isPaid = false;
+        if (ordersResponse.ok) {
+          const ordersData = await ordersResponse.json();
+          isPaid = ordersData.data?.some(
+            (order: { status: string }) =>
+              order.status === "PAID" ||
+              order.status === "FULFILLED" ||
+              order.status === "DELIVERED"
+          );
+        }
+
+        setBookStatus({
+          id: book.id,
+          status: book.status,
+          isPaid,
+          pdfUrl: book.pdfUrl,
+          coverImageUrl: book.coverImageUrl,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch book status:", err);
+    }
+  };
+
+  const generatePreview = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/books/${bookId}/preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Errore nella generazione dell'anteprima");
@@ -74,8 +170,6 @@ const BookPreview = () => {
     } catch (err) {
       console.error("Preview generation error:", err);
       setError(err instanceof Error ? err.message : "Errore sconosciuto");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -96,15 +190,84 @@ const BookPreview = () => {
     }
   };
 
-  const handlePurchase = () => {
-    // Navigate to purchase flow with book ID
-    const newParams = new URLSearchParams(searchParams);
-    navigate(`/checkout?${newParams.toString()}`);
+  const handlePurchase = async () => {
+    setIsCreatingOrder(true);
+
+    try {
+      // Create order
+      const orderResponse = await fetch(`${API_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          bookId,
+          productId: "digital_book",
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error("Errore nella creazione dell'ordine");
+      }
+
+      const orderData = await orderResponse.json();
+      const orderId = orderData.data.id;
+
+      // Create checkout session
+      const checkoutResponse = await fetch(
+        `${API_URL}/api/orders/${orderId}/checkout`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({
+            returnUrl: `${window.location.origin}/i-miei-libri`,
+          }),
+        }
+      );
+
+      if (!checkoutResponse.ok) {
+        throw new Error("Errore nella creazione del checkout");
+      }
+
+      const checkoutData = await checkoutResponse.json();
+
+      // Redirect to payment page
+      if (checkoutData.data.checkoutUrl) {
+        window.location.href = checkoutData.data.checkoutUrl;
+      }
+    } catch (err) {
+      console.error("Purchase error:", err);
+      setError(err instanceof Error ? err.message : "Errore nell'acquisto");
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/books/${bookId}/download`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data.url) {
+          window.open(data.data.url, "_blank");
+        }
+      }
+    } catch (err) {
+      console.error("Download error:", err);
+    }
   };
 
   const handleRegenerate = () => {
     setPreviewData(null);
-    generatePreview();
+    setIsLoading(true);
+    generatePreview().then(() => setIsLoading(false));
   };
 
   if (isLoading) {
@@ -172,6 +335,8 @@ const BookPreview = () => {
   const currentPreviewPage = isOnCover
     ? null
     : previewData?.previewPages?.[currentPage - 1];
+  const isPaid = bookStatus?.isPaid || false;
+  const isCompleted = bookStatus?.status === "COMPLETED";
 
   return (
     <div className="min-h-screen bg-[#f8f7f4] flex flex-col">
@@ -186,7 +351,9 @@ const BookPreview = () => {
 
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
-          <span className="font-medium text-gray-900">Anteprima del Libro</span>
+          <span className="font-medium text-gray-900">
+            {isPaid ? "Il Tuo Libro" : "Anteprima del Libro"}
+          </span>
         </div>
 
         <Button
@@ -194,10 +361,21 @@ const BookPreview = () => {
           variant="ghost"
           size="sm"
           className="text-gray-600"
+          disabled={isPaid}
         >
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
+
+      {/* Paid badge */}
+      {isPaid && (
+        <div className="bg-green-50 border-b border-green-200 px-4 py-3">
+          <div className="flex items-center justify-center gap-2 text-green-700">
+            <CheckCircle className="w-5 h-5" />
+            <span className="font-medium">Libro acquistato</span>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
@@ -206,9 +384,9 @@ const BookPreview = () => {
           {isOnCover ? (
             /* Cover Page */
             <Card className="aspect-[3/4] relative overflow-hidden rounded-2xl shadow-xl">
-              {previewData?.previewCoverUrl ? (
+              {previewData?.previewCoverUrl || bookStatus?.coverImageUrl ? (
                 <img
-                  src={previewData.previewCoverUrl}
+                  src={bookStatus?.coverImageUrl || previewData?.previewCoverUrl}
                   alt="Book cover"
                   className="w-full h-full object-cover"
                 />
@@ -304,31 +482,79 @@ const BookPreview = () => {
           </Button>
         </div>
 
-        {/* Preview notice */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md mb-6">
-          <p className="text-sm text-amber-800 text-center">
-            <strong>Questa è solo un'anteprima!</strong> Il libro completo
-            conterrà molte più pagine con la storia completa e tutte le
-            illustrazioni.
-          </p>
-        </div>
+        {/* CTA based on payment status */}
+        {isPaid && isCompleted ? (
+          /* Download CTA for paid users */
+          <div className="flex flex-col gap-3 w-full max-w-md">
+            <Button
+              onClick={handleDownload}
+              size="lg"
+              className="w-full py-6 bg-green-600 hover:bg-green-700 text-white rounded-xl text-lg"
+            >
+              <Download className="w-5 h-5 mr-2" />
+              Scarica il Libro Completo
+            </Button>
+            <p className="text-sm text-gray-500 text-center">
+              Il tuo libro è pronto! Clicca per scaricare il PDF completo.
+            </p>
+          </div>
+        ) : isPaid ? (
+          /* Generating CTA for paid but not completed */
+          <div className="flex flex-col gap-3 w-full max-w-md">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <div>
+                  <p className="font-medium text-blue-800">
+                    Libro in elaborazione
+                  </p>
+                  <p className="text-sm text-blue-600">
+                    Stiamo generando il tuo libro completo. Ti invieremo
+                    un'email quando sarà pronto!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Purchase CTA for unpaid users */
+          <>
+            {/* Preview notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 max-w-md mb-6">
+              <p className="text-sm text-amber-800 text-center">
+                <strong>Questa è solo un'anteprima!</strong> Il libro completo
+                conterrà molte più pagine con la storia completa e tutte le
+                illustrazioni.
+              </p>
+            </div>
 
-        {/* CTA */}
-        <div className="flex flex-col gap-3 w-full max-w-md">
-          <Button
-            onClick={handlePurchase}
-            size="lg"
-            className="w-full py-6 bg-primary hover:bg-coral-dark text-white rounded-xl text-lg"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" />
-            Ordina il Libro Completo
-          </Button>
+            <div className="flex flex-col gap-3 w-full max-w-md">
+              <Button
+                onClick={handlePurchase}
+                disabled={isCreatingOrder}
+                size="lg"
+                className="w-full py-6 bg-primary hover:bg-coral-dark text-white rounded-xl text-lg"
+              >
+                {isCreatingOrder ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Creazione ordine...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-5 h-5 mr-2" />
+                    Ordina il Libro Completo
+                  </>
+                )}
+              </Button>
 
-          <p className="text-sm text-gray-500 text-center">
-            Ti è piaciuta l'anteprima? Acquista il libro completo e ricevilo a
-            casa tua!
-          </p>
-        </div>
+              <p className="text-sm text-gray-500 text-center">
+                Ti è piaciuta l'anteprima? Acquista il libro completo e ricevilo
+                a casa tua!
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
