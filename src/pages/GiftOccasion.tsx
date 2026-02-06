@@ -10,7 +10,7 @@ const GiftOccasion = () => {
   };
 
   const handleGift = () => {
-    navigate("/character-selection?is_gift=true");
+    navigate("/occasion-selection");
   };
 
   const handleForMe = () => {

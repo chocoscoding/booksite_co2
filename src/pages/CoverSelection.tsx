@@ -20,10 +20,16 @@ const CoverSelection = () => {
   };
 
   const handleContinue = () => {
-    // Pass the cover type to the next step
     const params = new URLSearchParams(searchParams);
     params.set("coverType", selectedCover);
-    navigate(`/book-preview?${params.toString()}`);
+
+    if (selectedCover === "photo") {
+      // Go to photo upload
+      navigate(`/photo-upload?${params.toString()}`);
+    } else {
+      // Go directly to book preview for illustrated cover
+      navigate(`/book-preview?${params.toString()}`);
+    }
   };
 
   const coverOptions = [
