@@ -20,6 +20,16 @@ import { BookPdfViewer, BookPdfDownloadButton } from "@/components/BookPdfViewer
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
+// Loading status messages that cycle during generation
+const LOADING_MESSAGES = [
+  { title: "Analizzando la tua storia...", subtitle: "Stiamo studiando i personaggi e il tema del libro" },
+  { title: "Creando la struttura narrativa...", subtitle: "La nostra IA sta pianificando i capitoli" },
+  { title: "Scrivendo le prime pagine...", subtitle: "Ogni parola viene scelta con cura per te" },
+  { title: "Aggiungendo dettagli magici...", subtitle: "Rendiamo la storia unica e speciale" },
+  { title: "Generando la copertina...", subtitle: "Un'immagine vale più di mille parole" },
+  { title: "Ultimi ritocchi...", subtitle: "La tua anteprima è quasi pronta" },
+];
+
 interface PreviewPage {
   chapterNumber: number;
   title: string;
@@ -53,11 +63,26 @@ const BookPreview = () => {
   const [error, setError] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [showPdfView, setShowPdfView] = useState(false);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
+  // Cycle through loading messages while generating
+  useEffect(() => {
+    if (!isLoading) return;
+    
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 5000); // Change message every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  console.log(bookStatus);
+  
   // Support both session storage and URL param for bookId (for email links)
   const bookId = session?.bookId || searchParams.get("bookId");
   const name = session?.character?.name || searchParams.get("name") || "il tuo personaggio";
   const emailToken = searchParams.get("token"); // JWT from email/magic link
+
 
   useEffect(() => {
     if (!bookId) {
@@ -139,6 +164,8 @@ const BookPreview = () => {
               order.status === "DELIVERED"
           );
         }
+        console.log(book);
+        
 
         setBookStatus({
           id: book.id,
@@ -176,7 +203,7 @@ const BookPreview = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate("/");
   };
 
   const handlePreviousPage = () => {
@@ -273,31 +300,41 @@ const BookPreview = () => {
   };
 
   if (isLoading) {
+    const currentMessage = LOADING_MESSAGES[loadingMessageIndex];
+    
     return (
       <div className="min-h-screen bg-[#f8f7f4] flex flex-col items-center justify-center px-4">
         {/* Loading spinner */}
-        <div className="w-24 h-24 bg-coral-light rounded-full flex items-center justify-center mb-8 animate-pulse">
+        <div className="w-24 h-24 bg-coral-light rounded-full flex items-center justify-center animate-pulse">
           <Loader2 className="h-12 w-12 text-primary animate-spin" />
         </div>
 
-        {/* Loading text */}
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 text-center">
-          Stiamo creando la tua anteprima...
-        </h1>
-        <p className="text-gray-600 text-center max-w-md">
-          La nostra IA sta generando le prime 3 pagine e la copertina del tuo
-          libro personalizzato per {name}.
-        </p>
+        {/* Loading text - animated transitions */}
+        <div className="min-h-[120px] flex flex-col items-center justify-center">
+          <h1 
+            key={loadingMessageIndex} 
+            className="text-2xl md:text-3xl font-bold text-gray-900 mb-1 text-center animate-fade-in"
+          >
+            {currentMessage.title}
+          </h1>
+          <p 
+            key={`subtitle-${loadingMessageIndex}`}
+            className="text-gray-600 text-center max-w-md animate-fade-in"
+          >
+            {currentMessage.subtitle}
+          </p>
+        </div>
+
 
         {/* Loading bar */}
-        <div className="w-full max-w-md mt-8">
+        <div className="w-full max-w-md mt-4">
           <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full animate-loading-bar"></div>
           </div>
         </div>
 
         <p className="text-sm text-gray-500 mt-4">
-          Ci vorrà circa 30-60 secondi...
+          Creazione libro per {name}...
         </p>
       </div>
     );
@@ -484,30 +521,6 @@ const BookPreview = () => {
           </Button>
         </div>
 
-        {/* PDF View Toggle */}
-        {previewData && (
-          <div className="w-full max-w-2xl mb-8">
-            <Button
-              onClick={() => setShowPdfView(!showPdfView)}
-              variant="ghost"
-              className="text-primary hover:text-coral-dark mb-4"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              {showPdfView ? "Nascondi PDF" : "Visualizza come PDF"}
-            </Button>
-
-            {showPdfView && (
-              <BookPdfViewer
-                title={previewData.title || "Il Tuo Libro"}
-                subtitle={previewData.subtitle}
-                previewPages={previewData.previewPages || []}
-                coverImageUrl={previewData.previewCoverUrl || bookStatus?.coverImageUrl}
-                isPreview={!isPaid}
-                className="mt-4"
-              />
-            )}
-          </div>
-        )}
 
         {/* CTA based on payment status */}
         {isPaid && isCompleted ? (
