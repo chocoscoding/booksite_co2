@@ -47,7 +47,7 @@ const HeroSection = () => {
         </div>
 
         <div className="flex justify-center gap-4 mt-12 overflow-hidden">
-          {[heroPerson1, heroPerson2, heroPerson3].map((img, index) => (
+          {[heroPerson3, heroPerson2, heroPerson3].map((img, index) => (
             <div
               key={index}
               className="w-48 h-64 md:w-56 md:h-72 rounded-xl overflow-hidden shadow-medium hover:shadow-strong transition-all duration-300 hover:scale-105"
