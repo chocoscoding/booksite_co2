@@ -276,13 +276,13 @@ const BookGenerated = () => {
         Il tuo libro personalizzato su {name} è pronto!
       </p>
 
-      {/* Cover preview */}
+      {/* Cover preview — 1024x1024 with 15% padding, shown as portrait */}
       {coverImageUrl ? (
-        <div className="w-48 h-64 rounded-xl shadow-lg mb-8 overflow-hidden border border-gray-100">
-          <img src={coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+        <div className="w-72 sm:w-80 md:w-96 aspect-[2/3] rounded-xl shadow-lg mb-8 overflow-hidden border border-gray-100 bg-black flex items-center justify-center">
+          <img src={coverImageUrl} alt="Cover" style={{ height: '100%', width: 'auto', objectFit: 'cover', maxHeight: '100%' }} className="max-h-full object-cover" />
         </div>
       ) : (
-        <div className="w-48 h-64 bg-white rounded-xl shadow-lg flex items-center justify-center mb-8 border border-gray-100">
+        <div className="w-72 sm:w-80 md:w-96 aspect-[2/3] bg-white rounded-xl shadow-lg flex items-center justify-center mb-8 border border-gray-100">
           <BookOpen className="h-16 w-16 text-primary" />
         </div>
       )}

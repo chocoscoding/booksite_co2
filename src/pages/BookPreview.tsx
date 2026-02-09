@@ -421,13 +421,14 @@ const BookPreview = () => {
         {/* Book preview */}
         <div className="w-full max-w-2xl mb-8">
           {isOnCover ? (
-            /* Cover Page */
-            <Card className="aspect-[3/4] relative overflow-hidden rounded-2xl shadow-xl">
+            /* Cover Page — 1024x1024 with 15% padding, shown as portrait */
+            <Card className="aspect-[2/3] relative overflow-hidden rounded-2xl shadow-xl bg-black flex items-center justify-center">
               {previewData?.previewCoverUrl || bookStatus?.coverImageUrl ? (
                 <img
                   src={bookStatus?.coverImageUrl || previewData?.previewCoverUrl}
                   alt="Book cover"
-                  className="w-full h-full object-cover"
+                  style={{ height: '100%', width: 'auto', objectFit: 'cover', maxHeight: '100%' }}
+                  className="max-h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary to-coral-dark flex flex-col items-center justify-center p-8">
@@ -442,7 +443,6 @@ const BookPreview = () => {
                   )}
                 </div>
               )}
-
               {/* Cover label */}
               <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full">
                 <span className="text-sm font-medium text-gray-700">
