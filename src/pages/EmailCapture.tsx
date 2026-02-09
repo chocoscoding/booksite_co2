@@ -11,6 +11,7 @@ import {
   setAuthToken,
   prepareBookCreationData 
 } from "@/lib/bookSession";
+import { guestApi } from "@/lib/api";
 
 const EmailCapture = () => {
   const navigate = useNavigate();
@@ -50,74 +51,52 @@ const EmailCapture = () => {
       const { characters, customization, isGift, genre, occasion } = bookData;
       const name = session.character?.name || "";
 
-      // Create book draft via API
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
-      
-      // First, register/login the user (simplified for demo)
-      const authResponse = await fetch(`${apiUrl}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password: "TempPass123!", // In production, handle this better
-          name: isGift ? "Gift Giver" : name,
-        }),
-      });
-
-      let token = "";
-      let userId = "";
-      if (authResponse.ok) {
-        const authData = await authResponse.json();
-        token = authData.data.token;
-        userId = authData.data.user.id;
-        localStorage.setItem("authToken", token);
-        setAuthToken(token);
-      } else {
-        // Try login if register fails (user might exist)
-        const loginResponse = await fetch(`${apiUrl}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password: "TempPass123!" }),
-        });
-        
-        if (loginResponse.ok) {
-          const loginData = await loginResponse.json();
-          token = loginData.data.token;
-          userId = loginData.data.user.id;
-          localStorage.setItem("authToken", token);
-          setAuthToken(token);
-        } else {
-          throw new Error("Impossibile autenticare l'utente");
-        }
-      }
-
-      // Create book draft (backend generates real MongoDB ID)
-      const bookResponse = await fetch(`${apiUrl}/api/books`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      // Step 1: Create book draft via guest API (no auth required)
+      const createResult = await guestApi.createBook({
+        genre: genre || "comedy",
+        occasion,
+        characters: characters.map((c) => ({
+          name: c.name,
+          role: (c.role as "protagonist" | "supporting" | "antagonist") || "protagonist",
+          description: c.description,
+          personality: c.personality,
+        })),
+        customization: {
+          tone: customization.tone as "funny" | "heartfelt" | "adventurous" | "educational" | "romantic",
+          pageCount: customization.pageCount,
+          includeIllustrations: customization.includeIllustrations,
+          recipientName: customization.recipientName,
+          recipientRelationship: customization.recipientRelationship,
+          dedicationMessage: customization.dedicationMessage,
+          specialMessages: customization.specialMessages as string[] | undefined,
         },
-        body: JSON.stringify({
-          title: `La Storia di ${name}`,
-          genre,
-          occasion,
-          characters,
-          customization,
-        }),
       });
 
-      if (!bookResponse.ok) {
-        throw new Error("Errore nella creazione del libro");
+      if (!createResult.success || !createResult.data) {
+        throw new Error(createResult.error || "Errore nella creazione del libro");
       }
 
-      const bookDataResponse = await bookResponse.json();
-      const bookId = bookDataResponse.data.id; // This is the REAL MongoDB ID from backend
+      const bookId = createResult.data.id;
 
-      // Save book ID to session
+      // Step 2: Capture email — links book to a user account and returns a JWT
+      const captureResult = await guestApi.captureEmail(
+        bookId,
+        email,
+        isGift ? "Gift Giver" : name
+      );
+
+      if (!captureResult.success || !captureResult.data) {
+        throw new Error(captureResult.error || "Errore nel salvataggio dell'email");
+      }
+
+      const { token } = captureResult.data;
+
+      // Save book ID and auth token to session
       setBookId(bookId);
+      setAuthToken(token);
+      localStorage.setItem("authToken", token);
 
-      // Navigate to title selection (no URL params needed)
+      // Navigate to title selection
       navigate("/title-selection");
     } catch (err) {
       console.error("Error:", err);
